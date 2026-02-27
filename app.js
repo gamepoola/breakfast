@@ -327,7 +327,7 @@ async function initCloud(force=false){
 
 function subscribeTodayMeta(){
   const { db, doc, onSnapshot } = window.__fb;
-  onSnapshot(doc(db, dayPath() + '/meta'), (snap)=>{
+  onSnapshot(doc(db, dayPath() + '/meta/summary'), (snap)=>{
     const d = snap.data();
     if (d && d.clearedAt){
       cloudClearBefore = d.clearedAt.toDate ? d.clearedAt.toDate() : null;
@@ -398,12 +398,14 @@ async function uploadInhToCloud(map){
   if (!cloudReady) return;
   try{
   if (!cloudReady) return;
+  try{
+  if (!cloudReady) return;
   const { db, doc, setDoc, writeBatch, serverTimestamp } = window.__fb;
   const entries = Object.entries(map || {});
   const rooms = entries.length;
   const ro = entries.filter(([_,v]) => (v && String(v.pkg||'').toUpperCase()==='RO')).length;
 
-  await setDoc(doc(db, dayPath() + '/meta'), {
+  await setDoc(doc(db, dayPath() + '/meta/summary'), {
     inhRooms: rooms,
     inhRO: ro,
     inhUpdatedAt: serverTimestamp(),
@@ -424,6 +426,9 @@ async function uploadInhToCloud(map){
     }
     await batch.commit();
     i += 450;
+  }
+  }catch(e){
+    throw e;
   }
   }catch(e){
     throw e;
@@ -481,7 +486,7 @@ async function saveCheckinCloud(payload){
 async function softClearTodayCloud(){
   if (!cloudReady) return;
   const { db, doc, setDoc, serverTimestamp } = window.__fb;
-  await setDoc(doc(db, dayPath() + '/meta'), { clearedAt: serverTimestamp() }, { merge:true });
+  await setDoc(doc(db, dayPath() + '/meta/summary'), { clearedAt: serverTimestamp() }, { merge:true });
   cloudClearBefore = new Date();
   renderRecent();
 }
