@@ -341,23 +341,32 @@ initCloud();
 
 function subscribeTodayInh(){
   const { db, collection, onSnapshot } = window.__fb;
-  onSnapshot(collection(db, dayPath() + '/inh_rooms'), (snap)=>{
+  const roomsRef = collection(db, dayPath() + '/inh_rooms');
+
+  onSnapshot(roomsRef, (snap)=>{
     const map = {};
     snap.forEach(docu=>{
       const v = docu.data() || {};
       map[docu.id] = { name: v.name || '-', pkg: (String(v.pkg||'RB').toUpperCase()==='RO')?'RO':'RB' };
     });
+
     cloudInhMap = map;
 
-    // ถ้าเครื่องนี้ยังไม่ได้โหลด INH เอง ให้ใช้จาก Cloud อัตโนมัติ
-    if (!inhMap && Object.keys(map).length){
+    // ✅ Cloud เป็นแหล่งกลาง: ถ้ามีข้อมูลใน Cloud ให้ใช้ Cloud ทันที (ทุกเครื่องเห็นเหมือนกัน)
+    if (Object.keys(map).length){
       inhMap = cloudInhMap;
+
       const rooms = Object.keys(inhMap).length;
       const ro = Object.values(inhMap).filter(x=>x.pkg==='RO').length;
+
       inhMeta = {rooms, ro, file:'(Cloud)', loadedAt: nowISO()};
       saveLocal('inhMap', inhMap);
       saveLocal('inhMeta', inhMeta);
+
       setInhStatus(true, `Rooms: ${rooms} | RO: ${ro} | Cloud`);
+      updateStatsUI();
+    } else {
+      // Cloud ยังไม่มี INH -> คงของ local ไว้ก่อน
       updateStatsUI();
     }
   });
