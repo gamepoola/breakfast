@@ -180,6 +180,13 @@ function showModal({title='แจ้งเตือน', body='', isRO=false, as
 // INH: room -> {name, pkg}
 
 // ===== Helpers: Stats + INH processing =====
+
+function setCloudPath(){
+  const el = document.getElementById('cloudPath');
+  if (!el) return;
+  const hid = (window.HOTEL_ID || 'default').trim();
+  el.textContent = `Cloud path: hotels/${hid}/days/${todayISO()}/...`;
+}
 function setText(id, text){
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -305,6 +312,17 @@ async function initCloud(force=false){
   subscribeTodayMeta();
   subscribeTodayInh();
   subscribeTodayLogs();
+  // Auto-upload INH if already loaded before cloud ready
+  try{
+    const already = localStorage.getItem(INH_UPLOAD_KEY);
+    if (inhMap && !already){
+      await uploadInhToCloud(inhMap);
+      localStorage.setItem(INH_UPLOAD_KEY, '1');
+      await showModal({title:'Cloud Sync', body:'อัปโหลด INH ไปยัง Cloud แล้ว (ทุกเครื่องจะใช้ชุดเดียวกัน)'});
+    }
+  }catch(e){
+    await showModal({title:'อัปโหลด INH ไม่สำเร็จ', body: String(e?.message || e)});
+  }
 }
 
 function subscribeTodayMeta(){
@@ -314,6 +332,7 @@ function subscribeTodayMeta(){
     if (d && d.clearedAt){
       cloudClearBefore = d.clearedAt.toDate ? d.clearedAt.toDate() : null;
       renderRecent();
+setCloudPath();
 updateStatsUI();
 initCloud();
     }
@@ -368,6 +387,8 @@ function subscribeTodayLogs(){
 
 async function uploadInhToCloud(map){
   if (!cloudReady) return;
+  try{
+  if (!cloudReady) return;
   const { db, doc, setDoc, writeBatch, serverTimestamp } = window.__fb;
   const entries = Object.entries(map || {});
   const rooms = entries.length;
@@ -395,9 +416,14 @@ async function uploadInhToCloud(map){
     await batch.commit();
     i += 450;
   }
+  }catch(e){
+    throw e;
+  }
 }
 
 async function saveCheckinCloud(payload){
+  if (!cloudReady) return false;
+  try{
   if (!cloudReady) return false;
   const { db, doc, getDoc, setDoc, addDoc, collection, serverTimestamp } = window.__fb;
   const room = payload.Room;
@@ -437,6 +463,10 @@ async function saveCheckinCloud(payload){
   }, { merge:true });
 
   return true;
+  }catch(e){
+    await showModal({title:'Cloud write ไม่สำเร็จ', body: String(e?.code || e?.message || e)});
+    return false;
+  }
 }
 
 async function softClearTodayCloud(){
