@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Breakfast Check-in</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#111827" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <style>
+  :root{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    --bg0:#070b14;
+    --bg1:#0b1220;
+    --card:rgba(255,255,255,.06);
+    --card2:rgba(255,255,255,.04);
+    --stroke:rgba(255,255,255,.10);
+    --stroke2:rgba(255,255,255,.16);
+    --ink:#e5e7eb;
+    --muted:#a3a9b6;
+    --muted2:#8b93a4;
+    --accent:#22c55e;
+    --accent2:#16a34a;
+    --danger:#ef4444;
+    --warn:#f59e0b;
+    --radius:22px;
+    --shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+
+  body{
+    margin:0;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(59,130,246,.18), transparent 60%),
+      radial-gradient(900px 500px at 90% 20%, rgba(34,197,94,.14), transparent 55%),
+      linear-gradient(180deg, var(--bg0), var(--bg1));
+    min-height:100vh;
+  }
+
+  header{
+    position:sticky;top:0;z-index:10;
+    padding:18px 18px calc(10px + env(safe-area-inset-top));
+    backdrop-filter: blur(10px) saturate(140%);
+    background:rgba(7,11,20,.55);
+    border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .topbar{
+    max-width:1180px;margin:0 auto;
+    display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  }
+  header h1{
+    margin:0;
+    font-size:22px;
+    letter-spacing:.2px;
+  }
+  .topright{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    font-size:12px;color:var(--muted);
+  }
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 12px;border-radius:999px;
+    background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.10);
+    color:var(--ink);
+    font-weight:700;
+  }
+  .pill.ok{border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.10)}
+  .pill.no{border-color:rgba(99,102,241,.35); background:rgba(99,102,241,.10)}
+  .pill.warn{border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.10)}
+  .muted{color:var(--muted);font-size:12px}
+
+  main{padding:18px;max-width:1180px;margin:0 auto}
+  .grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+  @media(min-width:980px){
+    .grid{grid-template-columns: 1.25fr .75fr;}
+  }
+
+  .card{
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:16px;
+    backdrop-filter: blur(12px) saturate(130%);
+  }
+  .card h2{
+    margin:0 0 10px;
+    font-size:14px;
+    font-weight:800;
+    color:rgba(229,231,235,.92);
+  }
+
+  .fileRow{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+    margin-bottom:10px;
+  }
+  .fileRow .left{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .fileRow label{
+    font-size:12px;color:var(--muted);
+  }
+  input[type="file"]{
+    width:min(520px,100%);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:16px;
+    padding:10px 12px;
+    color:var(--ink);
+  }
+
+  .row{
+    display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px;
+  }
+  @media(min-width:700px){
+    .row{grid-template-columns: 1.35fr .65fr;}
+  }
+  .field label{
+    display:block;font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    box-sizing:border-box;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.18);
+    border-radius:18px;
+    padding:18px 16px;
+    font-size:38px;
+    color:var(--ink);
+    outline:none;
+  }
+  .field input.small{font-size:34px}
+  .field input::placeholder{color:rgba(163,169,182,.7)}
+  .field input:focus{
+    border-color:rgba(34,197,94,.40);
+    box-shadow:0 0 0 4px rgba(34,197,94,.18);
+  }
+
+  .btns{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+  button{
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:18px;
+    padding:14px 18px;
+    font-size:16px;
+    font-weight:900;
+    color:var(--ink);
+    background:rgba(255,255,255,.06);
+    cursor:pointer;
+  }
+  button:hover{background:rgba(255,255,255,.09)}
+  button.primary{
+    background:linear-gradient(180deg, rgba(34,197,94,.90), rgba(22,163,74,.85));
+    border-color:rgba(34,197,94,.45);
+    color:#052e16;
+  }
+  button.secondary{background:rgba(255,255,255,.05)}
+  button.danger{
+    background:linear-gradient(180deg, rgba(239,68,68,.85), rgba(220,38,38,.82));
+    border-color:rgba(239,68,68,.45);
+    color:#fff;
+  }
+
+  .list{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+    font-size:12px;
+    white-space:pre-wrap;
+    line-height:1.45;
+    background:rgba(0,0,0,.22);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:18px;
+    padding:12px;
+    max-height:540px;
+    overflow:auto;
+  }
+
+  .subnote{
+    margin-top:10px;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,.55);
+    display:none;align-items:center;justify-content:center;
+    z-index:50;padding:18px;
+  }
+  .modal{
+    width:min(780px,100%);
+    background:rgba(10,16,29,.95);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:26px;
+    box-shadow:0 30px 90px rgba(0,0,0,.55);
+    padding:18px 18px 14px;
+  }
+  .modal h2{margin:0 0 10px;font-size:22px}
+  .modal .content{font-size:18px;line-height:1.45;white-space:pre-wrap;color:var(--ink)}
+  .ro-tag{
+    display:inline-block;
+    background:rgba(239,68,68,.16);
+    color:#fecaca;
+    padding:6px 12px;border-radius:999px;
+    font-weight:1000;font-size:22px;letter-spacing:.6px;
+    margin-bottom:10px;
+    border:1px solid rgba(239,68,68,.35);
+  }
+  .modal .actions{display:flex;gap:12px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .modal .actions button{min-width:140px;padding:14px 16px;font-size:18px}
+
+  .kbd{
+    font-family:ui-monospace,monospace;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:8px;padding:2px 6px;
+    color:rgba(229,231,235,.95);
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <h1>Breakfast Check-in (Executive / RO / RB)</h1>
+    <div class="topright">
+      <span class="pill" id="pwaHint">PWA: กำลังตรวจสอบ…</span>
+      <span class="pill no" id="cloudPill">Cloud: ไม่ได้ตั้งค่า</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+    <div class="card">
+      <div class="fileRow">
+        <div class="left">
+          <h2>โหลดเอกสาร (XLSX/CSV)</h2>
+          <span class="muted">— เลือกไฟล์ INH เพื่อเช็ค Executive/RO/RB</span>
+        </div>
+        <div class="topright">
+          สถานะ INH: <span id="inhStatus" class="pill no">ยังไม่ได้โหลด</span>
+        </div>
+      </div>
+
+      <div class="fileRow" style="margin-top:6px">
+        <div class="left" style="flex:1">
+          <label class="muted">ไฟล์ INH:</label>
+          <input id="fileInh" type="file"
+            accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
+        </div>
+        <div class="btns" style="margin-top:0">
+          <button id="btnLoadInh" class="secondary">โหลด INH</button>
+          <button id="btnClear" class="danger">ล้าง Logs</button>
+        </div>
+      </div>
+
+      <div class="subnote" id="inhMeta"></div>
+
+      <div class="row">
+        <div class="field">
+          <label>เลขห้อง (เช่น A105 / D610) — กด <span class="kbd">Enter</span> เพื่อไปช่องถัดไป</label>
+          <input id="room" autocomplete="off" autocapitalize="characters" placeholder="เช่น A105" />
+        </div>
+        <div class="field">
+          <label>จำนวนคน (PAX) — กด <span class="kbd">Enter</span> เพื่อบันทึกทันที</label>
+          <input id="guests" class="small" inputmode="numeric" autocomplete="off" placeholder="1" />
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="btnSave" class="primary">เช็คอิน</button>
+        <button id="btnRefresh" class="secondary">รีเฟรชรายการวันนี้</button>
+        <button id="btnExport" class="secondary">Export Logs (CSV)</button>
+        <button id="btnImport" class="secondary">Import Logs (CSV)</button>
+        <input id="fileLog" type="file" accept=".csv,text/csv" style="display:none" />
+      </div>
+
+      <div class="subnote">
+        ระบบจะแจ้งเตือนทันทีถ้า <b style="color:#fecaca">RO</b> (ให้เก็บเงิน) และจะเตือนถ้าห้องนี้เช็คอินแล้วในวันนี้
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <h2>Log ล่าสุด</h2>
+        <span class="pill warn">วันนี้: <span id="today" style="margin-left:8px">—</span></span>
+      </div>
+
+      <div id="recent" class="list" style="margin-top:10px"></div>
+
+      <div class="subnote">
+        รูปแบบไฟล์ INH รองรับหัวคอลัมน์:
+        <ul>
+          <li><b>Room</b> / <b>ห้อง</b> / <b>เลขห้อง</b></li>
+          <li><b>Name</b> / <b>Guest Full Name</b> / <b>ชื่อ-นามสกุล</b></li>
+          <li><b>Package</b> / <b>แพคเกจ</b> (RO/RB) — ถ้าไม่ใช่ RO จะถือเป็น RB</li>
+        </ul>
+      </div>
+
+      <div class="subnote">
+        PWA: iPad เปิดใน Safari → Share → Add to Home Screen<br/>
+        Notebook เปิดใน Chrome/Edge → Install app (ถ้ามี)
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="overlay" class="overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h2 id="mTitle">แจ้งเตือน</h2>
+    <div id="mRo" style="display:none"><span class="ro-tag">RO</span></div>
+    <div id="mBody" class="content"></div>
+    <div class="actions" id="mActions"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- ===== Firebase (Cloud Sync) =====
+  1) Create Firebase project -> enable Firestore + Authentication (Anonymous หรือ Email/Password)
+  2) Paste your firebaseConfig below
+-->
+<script>
+  // TODO: ใส่ค่า config จาก Firebase Console -> Project settings -> Your apps -> SDK setup and configuration
+  window.FIREBASE_CONFIG = {
+    apiKey: "PASTE_HERE",
+    authDomain: "PASTE_HERE",
+    projectId: "PASTE_HERE",
+    storageBucket: "PASTE_HERE",
+    messagingSenderId: "PASTE_HERE",
+    appId: "PASTE_HERE"
+  };
+
+  // ID สำหรับแยกโรงแรม/สาขา (ตั้งชื่อได้เอง เช่น laya-phuket)
+  window.HOTEL_ID = "laya-phuket";
+</script>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js';
+  import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js';
+  import {
+    getFirestore, enableIndexedDbPersistence,
+    collection, doc, setDoc, getDoc, addDoc, serverTimestamp,
+    onSnapshot, query, orderBy, limit, writeBatch
+  } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js';
+
+  try{
+    const cfg = window.FIREBASE_CONFIG || {};
+    if (!cfg.projectId || cfg.projectId === "PASTE_HERE") throw new Error("missing_config");
+
+    const app = initializeApp(cfg);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    enableIndexedDbPersistence(db).catch(()=>{});
+
+    window.__fb = {
+      auth, db, signInAnonymously, onAuthStateChanged,
+      collection, doc, setDoc, getDoc, addDoc, serverTimestamp,
+      onSnapshot, query, orderBy, limit, writeBatch
+    };
+  }catch(e){
+    // window.__fb จะไม่ถูกตั้งค่า -> app จะ fallback เป็นโหมด local
+  }
+</script>
+<!-- ===== /Firebase ===== -->
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  }
+</script>
+</body>
+</html>
