@@ -179,15 +179,43 @@ function showModal({title='แจ้งเตือน', body='', isRO=false, as
 
 // INH: room -> {name, pkg}
 
-// =======================
-// Cloud Sync (Firebase Firestore)
-// ทุกเครื่องใช้ข้อมูลเดียวกัน ถ้าตั้งค่า FIREBASE_CONFIG แล้ว
-// =======================
-let cloudEnabled = false;
-let cloudReady = false;
-let cloudClearBefore = null; // soft-clear timestamp
-let cloudInhMap = null;      // room -> {name, pkg}
-let cloudLogs = [];          // today logs
+// ===== Helpers: Stats + INH processing =====
+function setText(id, text){
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function calcStatsFromInh(map){
+  const rooms = map ? Object.keys(map).length : 0;
+  const ro = map ? Object.values(map).filter(v => (v && String(v.pkg||'').toUpperCase()==='RO')).length : 0;
+  return { rooms, ro };
+}
+
+function calcStatsFromLogs(logs){
+  const uniq = new Set();
+  let notFound = 0;
+  for (const l of (logs || [])){
+    if (l && l.Room) uniq.add(l.Room);
+    if (String(l?.InhFound||'NO').toUpperCase()==='NO') notFound += 1;
+  }
+  return { checkedRooms: uniq.size, notFound };
+}
+
+function updateStatsUI(){
+  const { rooms, ro } = calcStatsFromInh(inhMap || null);
+  let logs = cloudReady ? cloudLogs.slice(0, 300) : getLogs();
+  if (cloudClearBefore){
+    logs = logs.filter(l=>{
+      try{ return new Date(String(l.DateTime||'').replace(' ', 'T')) >= cloudClearBefore; }catch{ return true; }
+    });
+  }
+  const { checkedRooms, notFound } = calcStatsFromLogs(logs);
+
+  setText('statRooms', `ห้องทั้งหมด: ${rooms}`);
+  setText('statRO', `RO: ${ro}`);
+  setText('statCheckedRooms', `เช็คอินแล้ว: ${checkedRooms}`);
+  setText('statNotFound', `ยังไม่เจอห้อง: ${notFound}`);
+}
 
 function setCloudPill(state, kind='no'){
   const el = document.getElementById('cloudPill');
@@ -196,16 +224,28 @@ function setCloudPill(state, kind='no'){
   el.textContent = state;
 }
 
+// ===== Cloud Sync (Firebase Firestore) =====
+let cloudReady = false;
+let cloudClearBefore = null; // soft-clear timestamp
+let cloudInhMap = null;      // room -> {name, pkg}
+let cloudLogs = [];          // today logs
+
+function hotelPath(){
+  const hid = (window.HOTEL_ID || 'default').trim();
+  return `hotels/${hid}`;
+}
+function dayPath(){
+  return `${hotelPath()}/days/${todayISO()}`;
+}
+
 async function initCloud(){
-  if (!window.__fb || !window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.projectId || window.FIREBASE_CONFIG.projectId === 'PASTE_HERE'){
-    setCloudPill('Cloud: ไม่ได้ตั้งค่า', 'no');
+  if (!window.__fb || !window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.projectId){
+    setCloudPill('Cloud: ยังไม่พร้อม', 'no');
     return;
   }
-  cloudEnabled = true;
   setCloudPill('Cloud: กำลังเชื่อมต่อ…', 'warn');
 
   const { auth, signInAnonymously, onAuthStateChanged } = window.__fb;
-
   try{ await signInAnonymously(auth); }catch(e){}
 
   await new Promise((resolve)=>{
@@ -217,7 +257,7 @@ async function initCloud(){
         resolve(true);
       }
     });
-    setTimeout(()=>resolve(false), 3000);
+    setTimeout(()=>resolve(false), 3500);
   });
 
   if (!cloudReady){
@@ -230,22 +270,14 @@ async function initCloud(){
   subscribeTodayLogs();
 }
 
-function hotelPath(){
-  const hid = (window.HOTEL_ID || 'default').trim();
-  return `hotels/${hid}`;
-}
-function dayPath(){
-  return `${hotelPath()}/days/${todayISO()}`;
-}
-
 function subscribeTodayMeta(){
   const { db, doc, onSnapshot } = window.__fb;
-  const metaRef = doc(db, dayPath() + '/meta');
-  onSnapshot(metaRef, (snap)=>{
+  onSnapshot(doc(db, dayPath() + '/meta'), (snap)=>{
     const d = snap.data();
     if (d && d.clearedAt){
       cloudClearBefore = d.clearedAt.toDate ? d.clearedAt.toDate() : null;
       renderRecent();
+updateStatsUI();
 initCloud();
     }
   });
@@ -253,8 +285,7 @@ initCloud();
 
 function subscribeTodayInh(){
   const { db, collection, onSnapshot } = window.__fb;
-  const roomsRef = collection(db, dayPath() + '/inh_rooms');
-  onSnapshot(roomsRef, (snap)=>{
+  onSnapshot(collection(db, dayPath() + '/inh_rooms'), (snap)=>{
     const map = {};
     snap.forEach(docu=>{
       const v = docu.data() || {};
@@ -262,6 +293,7 @@ function subscribeTodayInh(){
     });
     cloudInhMap = map;
 
+    // ถ้าเครื่องนี้ยังไม่ได้โหลด INH เอง ให้ใช้จาก Cloud อัตโนมัติ
     if (!inhMap && Object.keys(map).length){
       inhMap = cloudInhMap;
       const rooms = Object.keys(inhMap).length;
@@ -270,14 +302,14 @@ function subscribeTodayInh(){
       saveLocal('inhMap', inhMap);
       saveLocal('inhMeta', inhMeta);
       setInhStatus(true, `Rooms: ${rooms} | RO: ${ro} | Cloud`);
+      updateStatsUI();
     }
   });
 }
 
 function subscribeTodayLogs(){
   const { db, collection, onSnapshot, query, orderBy, limit } = window.__fb;
-  const logsRef = collection(db, dayPath() + '/checkins');
-  const q = query(logsRef, orderBy('DateTime', 'desc'), limit(60));
+  const q = query(collection(db, dayPath() + '/checkins'), orderBy('DateTime', 'desc'), limit(80));
   onSnapshot(q, (snap)=>{
     const arr = [];
     snap.forEach(docu=>{
@@ -298,6 +330,7 @@ function subscribeTodayLogs(){
 }
 
 async function uploadInhToCloud(map){
+  if (!cloudReady) return;
   const { db, doc, setDoc, writeBatch, serverTimestamp } = window.__fb;
   const entries = Object.entries(map || {});
   const rooms = entries.length;
@@ -328,6 +361,7 @@ async function uploadInhToCloud(map){
 }
 
 async function saveCheckinCloud(payload){
+  if (!cloudReady) return false;
   const { db, doc, getDoc, setDoc, addDoc, collection, serverTimestamp } = window.__fb;
   const room = payload.Room;
 
@@ -369,15 +403,58 @@ async function saveCheckinCloud(payload){
 }
 
 async function softClearTodayCloud(){
+  if (!cloudReady) return;
   const { db, doc, setDoc, serverTimestamp } = window.__fb;
   await setDoc(doc(db, dayPath() + '/meta'), { clearedAt: serverTimestamp() }, { merge:true });
   cloudClearBefore = new Date();
   renderRecent();
 }
-// =======================
-// /Cloud Sync
-// =======================
+// ===== /Cloud Sync =====
 
+// Load selected file again via button
+async function processInhFile(file){
+  if (!file) return;
+  const name = file.name || '';
+  const ext = name.toLowerCase().split('.').pop();
+
+  if (ext === 'xlsx'){
+    if (typeof XLSX === 'undefined'){
+      throw new Error('โหลดตัวอ่านไฟล์ XLSX ไม่สำเร็จ\nแนะนำ: รีเฟรชหน้าเว็บ แล้วลองใหม่');
+    }
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    const sheetName = (wb.SheetNames || []).includes('Guests') ? 'Guests' : (wb.SheetNames?.[0]);
+    if (!sheetName) throw new Error('ไม่พบชีตในไฟล์ Excel');
+    const ws = wb.Sheets[sheetName];
+
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if (!rows || rows.length < 2) throw new Error('ไฟล์ Excel ว่างหรือไม่มีข้อมูล');
+
+    // find header row
+    const looksLikeHeader = (row)=>{
+      const keys = row.map(x=>String(x??'')).join(' | ').toLowerCase();
+      return keys.includes('room') || keys.includes('ห้อง') || keys.includes('เลขห้อง');
+    };
+    let headerRow = 0;
+    for (let i=0;i<Math.min(30, rows.length);i++){
+      if (looksLikeHeader(rows[i])) { headerRow = i; break; }
+    }
+    const trimmed = rows.slice(headerRow);
+
+    const esc = (v)=>{
+      const s = String(v ?? '');
+      if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+      return s;
+    };
+    const csv = trimmed.map(r=>r.map(esc).join(',')).join('\n');
+    buildInhMapFromCsv(csv, name);
+  } else {
+    const text = await file.text();
+    buildInhMapFromCsv(text, name);
+  }
+
+  updateStatsUI();
+}
 let inhMap = loadLocal('inhMap', null);
 let inhMeta = loadLocal('inhMeta', null);
 if (inhMap && inhMeta) setInhStatus(true, `Rooms: ${inhMeta.rooms} | RO: ${inhMeta.ro} | ${inhMeta.file}`);
@@ -434,7 +511,8 @@ function buildInhMapFromCsv(text, filename){
   saveLocal('inhMap', inhMap);
   saveLocal('inhMeta', inhMeta);
   setInhStatus(true, `Rooms: ${rooms} | RO: ${ro} | ${filename}`);
-  if (cloudReady){ uploadInhToCloud(map).catch(()=>{}); }
+  updateStatsUI();
+  uploadInhToCloud(map).catch(()=>{});
 }
 
 function getLogs(){
@@ -464,12 +542,7 @@ function renderRecent(){
   const t = todayISO();
   els.today.textContent = t;
 
-  let logs = (cloudReady ? cloudLogs.slice(0,60) : getLogs().slice(-40).reverse());
-  if (cloudClearBefore){
-    logs = logs.filter(l=>{
-      try{ return new Date(String(l.DateTime||'').replace(' ', 'T')) >= cloudClearBefore; }catch{ return true; }
-    });
-  }
+  const logs = getLogs().slice(-40).reverse();
   if (!logs.length){
     els.recent.textContent = 'วันนี้ยังไม่มีรายการ';
     return;
@@ -479,33 +552,23 @@ function renderRecent(){
     return `${l.DateTime} | ${l.Room} | ${l.Guests} | ${l.GuestName} | ${l.Package} | ${pay}`;
   });
   els.recent.textContent = lines.join('\n');
+  updateStatsUI();
 }
 
 function exportLogsCSV(){
   const t = todayISO();
-  const logsRaw = cloudReady ? cloudLogs.slice() : getLogs();
-  let logs = logsRaw;
-  if (cloudClearBefore){
-    logs = logsRaw.filter(l=>{
-      try{ return new Date(String(l.DateTime||'').replace(' ', 'T')) >= cloudClearBefore; }catch{ return true; }
-    });
-  }
+  const logs = getLogs();
   if (!logs.length){ showModal({title:'ยังไม่มีข้อมูล', body:'วันนี้ยังไม่มีรายการให้ export'}); return; }
 
   const headers = ['DateTime','Date','Room','Guests','GuestName','Package','NeedPayment','InhFound'];
   const esc = (v)=>{
     const s = String(v ?? '');
-    if (/[",
-]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
     return s;
   };
-
-  const ordered = logs.slice().reverse();
-
   const csv = [headers.join(',')]
-    .concat(ordered.map(l=>headers.map(h=>esc(h==='Date'?t:l[h])).join(',')))
-    .join('
-');
+    .concat(logs.map(l=>headers.map(h=>esc(h==='Date'?t:l[h])).join(',')))
+    .join('\n');
 
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -573,59 +636,26 @@ async function importLogsCSV(file){
   }
 }
 
-els.btnLoadInh.addEventListener('click', ()=>els.fileInh.click());
+els.btnLoadInh.addEventListener('click', async ()=>{
+  const file = els.fileInh?.files?.[0];
+  if (!file){ els.fileInh.click(); return; }
+  try{
+    await processInhFile(file);
+    await showModal({title:'สำเร็จ', body:'โหลด INH เรียบร้อย'});
+  }catch(err){
+    await showModal({title:'โหลด INH ไม่สำเร็จ', body: err?.message || String(err)});
+  }
+});
 els.fileInh.addEventListener('change', async (e)=>{
   const file = e.target.files?.[0];
   if (!file) return;
   try{
-    const name = file.name || '';
-    const ext = name.toLowerCase().split('.').pop();
-
-    if (ext === 'xlsx'){
-      if (typeof XLSX === 'undefined'){
-        throw new Error('ยังโหลดตัวอ่านไฟล์ XLSX ไม่สำเร็จ\nแนะนำ: เปิดเว็บนี้ด้วยอินเทอร์เน็ต 1 ครั้ง แล้วรีเฟรชใหม่');
-      }
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, {type:'array'});
-
-      // Prefer sheet name 'Guests' if present
-      const sheetName = (wb.SheetNames || []).includes('Guests') ? 'Guests' : (wb.SheetNames?.[0]);
-      if (!sheetName) throw new Error('ไม่พบชีตในไฟล์ Excel');
-      const ws = wb.Sheets[sheetName];
-
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''}); // array of arrays
-      if (!rows || rows.length < 2) throw new Error('ไฟล์ Excel ว่างหรือไม่มีข้อมูล');
-
-      // Find header row within first 30 rows (Room/ห้อง/เลขห้อง)
-      const looksLikeHeader = (row)=>{
-        const keys = row.map(x=>String(x??'')).join(' | ').toLowerCase();
-        return keys.includes('room') || keys.includes('ห้อง') || keys.includes('เลขห้อง');
-      };
-      let headerRow = 0;
-      for (let i=0;i<Math.min(30, rows.length);i++){
-        if (looksLikeHeader(rows[i])) { headerRow = i; break; }
-      }
-      const trimmed = rows.slice(headerRow);
-
-      // Convert to CSV (comma) then reuse parser
-      const esc = (v)=>{
-        const s = String(v ?? '');
-        if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
-        return s;
-      };
-      const csv = trimmed.map(r=>r.map(esc).join(',')).join('\n');
-      buildInhMapFromCsv(csv, name);
-    } else {
-      // csv or others
-      const text = await file.text();
-      buildInhMapFromCsv(text, name);
-    }
-
+    await processInhFile(file);
     await showModal({title:'สำเร็จ', body:'โหลด INH เรียบร้อย'});
   }catch(err){
     await showModal({title:'โหลด INH ไม่สำเร็จ', body: err?.message || String(err)});
   }finally{
-    els.fileInh.value = '';
+    // keep file selected
   }
 });
 

@@ -102,6 +102,8 @@
   .fileRow .left{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   }
+  .stats{display:flex;gap:10px;flex-wrap:wrap}
+
   .fileRow label{
     font-size:12px;color:var(--muted);
   }
@@ -227,7 +229,7 @@
     <h1>Breakfast Check-in (Executive / RO / RB)</h1>
     <div class="topright">
       <span class="pill" id="pwaHint">PWA: กำลังตรวจสอบ…</span>
-      <span class="pill no" id="cloudPill">Cloud: ไม่ได้ตั้งค่า</span>
+      <span class="pill no" id="cloudPill">Cloud: ยังไม่พร้อม</span>
     </div>
   </div>
 </header>
@@ -258,6 +260,12 @@
       </div>
 
       <div class="subnote" id="inhMeta"></div>
+      <div class="stats" style="margin-top:10px">
+        <span class="pill" id="statRooms">ห้องทั้งหมด: 0</span>
+        <span class="pill" id="statRO">RO: 0</span>
+        <span class="pill" id="statCheckedRooms">เช็คอินแล้ว: 0</span>
+        <span class="pill" id="statNotFound">ยังไม่เจอห้อง: 0</span>
+      </div>
 
       <div class="row">
         <div class="field">
@@ -320,11 +328,10 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <!-- ===== Firebase (Cloud Sync) =====
-  1) Create Firebase project -> enable Firestore + Authentication (Anonymous หรือ Email/Password)
-  2) Paste your firebaseConfig below
+  ใช้ Firestore เพื่อให้ทุกเครื่องใช้ข้อมูลเดียวกัน
+  * ตั้งค่า Firestore + Auth (Anonymous) ใน Firebase Console ก่อน
 -->
 <script>
-  // TODO: ใส่ค่า config จาก Firebase Console -> Project settings -> Your apps -> SDK setup and configuration
   window.FIREBASE_CONFIG = {
     apiKey: "AIzaSyAefwp-Wl83kbGUSCkLghht4gE-IBveYuY",
     authDomain: "breakfast-fe5e9.firebaseapp.com",
@@ -335,7 +342,7 @@
     measurementId: "G-TENETG3M8F"
   };
 
-  // ID สำหรับแยกโรงแรม/สาขา (ตั้งชื่อได้เอง เช่น laya-phuket)
+  // แยกข้อมูลตามโรงแรม/สาขา (แก้ชื่อได้)
   window.HOTEL_ID = "laya-phuket";
 </script>
 
@@ -350,12 +357,13 @@
 
   try{
     const cfg = window.FIREBASE_CONFIG || {};
-    if (!cfg.projectId || cfg.projectId === "PASTE_HERE") throw new Error("missing_config");
+    if (!cfg.projectId) throw new Error("missing_config");
 
     const app = initializeApp(cfg);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // offline cache (best effort)
     enableIndexedDbPersistence(db).catch(()=>{});
 
     window.__fb = {
@@ -364,7 +372,7 @@
       onSnapshot, query, orderBy, limit, writeBatch
     };
   }catch(e){
-    // window.__fb จะไม่ถูกตั้งค่า -> app จะ fallback เป็นโหมด local
+    // ถ้า init ไม่สำเร็จ -> ใช้งานแบบ local ต่อไป
   }
 </script>
 <!-- ===== /Firebase ===== -->
