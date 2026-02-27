@@ -346,35 +346,70 @@
   window.HOTEL_ID = "laya-phuket";
 </script>
 
-<script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js';
-  import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js';
-  import {
-    getFirestore, enableIndexedDbPersistence,
-    collection, doc, setDoc, getDoc, addDoc, serverTimestamp,
-    onSnapshot, query, orderBy, limit, writeBatch
-  } from 'https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js';
+<script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore-compat.js"></script>
 
-  try{
-    const cfg = window.FIREBASE_CONFIG || {};
-    if (!cfg.projectId) throw new Error("missing_config");
+<script>
+  // Create a modular-like wrapper so app.js can stay the same
+  try {
+    if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) {
+      firebase.initializeApp(window.FIREBASE_CONFIG);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
 
-    const app = initializeApp(cfg);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+      // Offline persistence (best effort)
+      db.enablePersistence({ synchronizeTabs: true }).catch(function(){});
 
-    // offline cache (best effort)
-    enableIndexedDbPersistence(db).catch(()=>{});
+      window.__fb = {
+        auth: auth,
+        db: db,
+        signInAnonymously: function(a){ return (a||auth).signInAnonymously(); },
+        onAuthStateChanged: function(a, cb){ return (a||auth).onAuthStateChanged(cb); },
 
-    window.__fb = {
-      auth, db, signInAnonymously, onAuthStateChanged,
-      collection, doc, setDoc, getDoc, addDoc, serverTimestamp,
-      onSnapshot, query, orderBy, limit, writeBatch
-    };
-  }catch(e){
-    // ถ้า init ไม่สำเร็จ -> ใช้งานแบบ local ต่อไป
+        collection: function(d, path){ return (d||db).collection(path); },
+        doc: function(d, path){ return (d||db).doc(path); },
+
+        setDoc: function(ref, data, opt){ return ref.set(data, opt || {}); },
+        getDoc: async function(ref){
+          const snap = await ref.get();
+          return { exists: function(){ return !!snap.exists; }, data: function(){ return snap.data(); } };
+        },
+        addDoc: function(collRef, data){ return collRef.add(data); },
+
+        serverTimestamp: function(){ return firebase.firestore.FieldValue.serverTimestamp(); },
+
+        onSnapshot: function(ref, cb){ return ref.onSnapshot(cb); },
+
+        orderBy: function(field, dir){ return { _t:'orderBy', field: field, dir: dir || 'asc' }; },
+        limit: function(n){ return { _t:'limit', n: n }; },
+        query: function(collRef /*, ...clauses */){
+          var q = collRef;
+          for (var i=1;i<arguments.length;i++){
+            var c = arguments[i];
+            if (!c) continue;
+            if (c._t === 'orderBy') q = q.orderBy(c.field, c.dir);
+            if (c._t === 'limit') q = q.limit(c.n);
+          }
+          return q;
+        },
+
+        writeBatch: function(d){
+          const batch = (d||db).batch();
+          // add compat for merge options
+          const _set = batch.set.bind(batch);
+          batch.set = function(docRef, data, opt){ return _set(docRef, data, opt || {}); };
+          return batch;
+        }
+      };
+    }
+  } catch (e) {
+    // keep local mode if init fails
   }
 </script>
+
+
+
 <!-- ===== /Firebase ===== -->
 
 <script src="app.js"></script>

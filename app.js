@@ -246,7 +246,13 @@ async function initCloud(){
   setCloudPill('Cloud: กำลังเชื่อมต่อ…', 'warn');
 
   const { auth, signInAnonymously, onAuthStateChanged } = window.__fb;
-  try{ await signInAnonymously(auth); }catch(e){}
+  try{ await signInAnonymously(auth); }
+  catch(e){
+    const msg = (e && (e.code || e.message)) ? String(e.code || e.message) : 'unknown';
+    setCloudPill('Cloud: Auth ไม่ผ่าน', 'warn');
+    await showModal({title:'เชื่อมต่อ Cloud ไม่สำเร็จ', body:'สาเหตุ: '+msg+'\n\nเช็ค 2 อย่างนี้:\n1) Firebase Auth เปิด Anonymous แล้ว\n2) Firestore Rules อนุญาต request.auth != null'});
+    return;
+  }
 
   await new Promise((resolve)=>{
     const unsub = onAuthStateChanged(auth, (u)=>{
