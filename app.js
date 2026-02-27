@@ -30,6 +30,9 @@ function todayISO(){
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
+
+// Track that INH has been uploaded to Cloud for today (avoid repeated uploads)
+const INH_UPLOAD_KEY = 'inh_uploaded_' + todayISO();
 function nowISO(){
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
