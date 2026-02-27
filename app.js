@@ -223,6 +223,26 @@ function setCloudPill(state, kind='no'){
   el.className = 'pill ' + (kind || 'no');
   el.textContent = state;
 }
+function cloudDiag(){
+  const st = window.__fb_status || {};
+  const hasFbGlobal = typeof window.firebase !== 'undefined';
+  const hasWrapper = !!window.__fb;
+  const cfg = window.FIREBASE_CONFIG || {};
+  const parts = [];
+  parts.push(`firebase global: ${hasFbGlobal ? 'OK' : 'NO'}`);
+  parts.push(`wrapper __fb: ${hasWrapper ? 'OK' : 'NO'}`);
+  parts.push(`projectId: ${cfg.projectId || '(missing)'}`);
+  if (st.stage) parts.push(`stage: ${st.stage}`);
+  if (st.error) parts.push(`error: ${st.error}`);
+  parts.push('');
+  parts.push('เช็คสิ่งนี้:');
+  parts.push('1) เปิดหน้าเว็บด้วยอินเทอร์เน็ตอย่างน้อย 1 ครั้ง (เพื่อโหลดไฟล์ Firebase จาก gstatic)');
+  parts.push('2) Firebase Auth เปิด Anonymous');
+  parts.push('3) Firestore Rules อนุญาต request.auth != null');
+  parts.push('4) ปิด AdBlock/Content blocker ชั่วคราว ถ้ามี');
+  return parts.join('\n');
+}
+
 
 // ===== Cloud Sync (Firebase Firestore) =====
 let cloudReady = false;
@@ -238,9 +258,17 @@ function dayPath(){
   return `${hotelPath()}/days/${todayISO()}`;
 }
 
-async function initCloud(){
+async function initCloud(force=false){
+  // wait a bit for firebase scripts to load (PWA cache / slow network)
+  for (let i=0;i<30;i++){
+    if (window.__fb) break;
+    await new Promise(r=>setTimeout(r, 100));
+  }
   if (!window.__fb || !window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.projectId){
     setCloudPill('Cloud: ยังไม่พร้อม', 'no');
+    if (force){
+      await showModal({title:'Cloud ยังไม่พร้อม', body: cloudDiag()});
+    }
     return;
   }
   setCloudPill('Cloud: กำลังเชื่อมต่อ…', 'warn');
@@ -268,6 +296,9 @@ async function initCloud(){
 
   if (!cloudReady){
     setCloudPill('Cloud: เชื่อมต่อไม่สำเร็จ', 'warn');
+    if (force){
+      await showModal({title:'Cloud เชื่อมต่อไม่สำเร็จ', body: cloudDiag()});
+    }
     return;
   }
 
@@ -681,6 +712,20 @@ els.fileLog.addEventListener('change', async (e)=>{
     els.fileLog.value = '';
   }
 });
+
+// Click Cloud pill to see diagnostics / retry
+(() => {
+  const cloudEl = document.getElementById('cloudPill');
+  if (cloudEl){
+    cloudEl.style.cursor = 'pointer';
+    cloudEl.addEventListener('click', async ()=>{
+      const ok = await showModal({title:'Cloud Diagnostics', body: cloudDiag(), ask:true});
+      if (ok){
+        await initCloud(true);
+      }
+    });
+  }
+})();
 
 els.btnClear.addEventListener('click', async ()=>{
   const ok = await showModal({title:'ล้าง Logs', body:'ต้องการล้าง Logs ของ “วันนี้” หรือไม่?', ask:true});

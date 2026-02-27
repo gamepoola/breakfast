@@ -352,15 +352,20 @@
 
 <script>
   // Create a modular-like wrapper so app.js can stay the same
+  window.__fb_status = { stage: 'boot', ok: false, error: null, projectId: (window.FIREBASE_CONFIG||{}).projectId || null };
   try {
     if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.projectId) {
+      window.__fb_status.stage = 'init';
       firebase.initializeApp(window.FIREBASE_CONFIG);
+      window.__fb_status.stage = 'init_ok';
       const auth = firebase.auth();
       const db = firebase.firestore();
 
       // Offline persistence (best effort)
       db.enablePersistence({ synchronizeTabs: true }).catch(function(){});
 
+      window.__fb_status.ok = true;
+      window.__fb_status.stage = 'wrapper_ready';
       window.__fb = {
         auth: auth,
         db: db,
@@ -404,7 +409,9 @@
       };
     }
   } catch (e) {
-    // keep local mode if init fails
+    window.__fb_status.ok = false;
+    window.__fb_status.stage = 'error';
+    window.__fb_status.error = (e && (e.message||e.toString())) ? String(e.message||e.toString()) : 'unknown';
   }
 </script>
 
