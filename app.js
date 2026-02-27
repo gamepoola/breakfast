@@ -58,6 +58,17 @@ function normName(s){
   return t;
 }
 
+function normalizePkg(raw){
+  const s = String(raw ?? '').trim().toUpperCase();
+  if (!s) return 'RB';
+  // Executive variants
+  if (s.includes('EXEC')) return 'EXECUTIVE';
+  // RO variants
+  if (s === 'RO' || s.startsWith('RO')) return 'RO';
+  return 'RB';
+}
+
+
 // Normalize header keys for flexible matching (trim, remove NBSP, remove punctuation, uppercase)
 function normHeaderKey(s){
   let t = String(s ?? '');
@@ -197,8 +208,9 @@ function setText(id, text){
 
 function calcStatsFromInh(map){
   const rooms = map ? Object.keys(map).length : 0;
-  const ro = map ? Object.values(map).filter(v => (v && String(v.pkg||'').toUpperCase()==='RO')).length : 0;
-  return { rooms, ro };
+  const ro = map ? Object.values(map).filter(v => normalizePkg(v?.pkg) === 'RO').length : 0;
+  const executive = map ? Object.values(map).filter(v => normalizePkg(v?.pkg) === 'EXECUTIVE').length : 0;
+  return { rooms, ro, executive };
 }
 
 function calcStatsFromLogs(logs){
@@ -212,7 +224,7 @@ function calcStatsFromLogs(logs){
 }
 
 function updateStatsUI(){
-  const { rooms, ro } = calcStatsFromInh(inhMap || null);
+  const { rooms, ro, executive } = calcStatsFromInh(inhMap || null);
   let logs = cloudReady ? cloudLogs.slice(0, 300) : getLogs();
   if (cloudClearBefore){
     logs = logs.filter(l=>{
@@ -223,6 +235,7 @@ function updateStatsUI(){
 
   setText('statRooms', `ห้องทั้งหมด: ${rooms}`);
   setText('statRO', `RO: ${ro}`);
+  setText('statExecutive', `Executive: ${executive}`);
   setText('statCheckedRooms', `เช็คอินแล้ว: ${checkedRooms}`);
   setText('statNotFound', `ยังไม่เจอห้อง: ${notFound}`);
 }
@@ -350,7 +363,7 @@ function subscribeTodayInh(){
     const map = {};
     snap.forEach(docu=>{
       const v = docu.data() || {};
-      map[docu.id] = { name: v.name || '-', pkg: (String(v.pkg||'RB').toUpperCase()==='RO')?'RO':'RB' };
+      map[docu.id] = { name: v.name || '-', pkg: normalizePkg(v.pkg || 'RB') };
     });
 
     cloudInhMap = map;
@@ -387,7 +400,7 @@ function subscribeTodayLogs(){
         Room: v.Room || '',
         Guests: v.Guests || 0,
         GuestName: v.GuestName || '-',
-        Package: (String(v.Package||'RB').toUpperCase()==='RO')?'RO':'RB',
+        Package: normalizePkg(v.Package || 'RB'),
         NeedPayment: v.NeedPayment || 'NO',
         InhFound: v.InhFound || 'NO',
       });
@@ -423,7 +436,7 @@ async function uploadInhToCloud(map){
       if (!ROOM_RE.test(r)) continue;
       batch.set(doc(db, dayPath() + `/inh_rooms/${r}`), {
         name: val?.name || '-',
-        pkg: (String(val?.pkg||'RB').toUpperCase()==='RO')?'RO':'RB',
+        pkg: normalizePkg(val?.pkg||'RB'),
         updatedAt: serverTimestamp(),
       }, { merge:true });
     }
@@ -575,7 +588,7 @@ function buildInhMapFromCsv(text, filename){
 
     const name = normName(row[iName] || '') || '-';
     let pkg = String(row[iPkg] || '').trim().toUpperCase();
-    pkg = (pkg === 'RO' || pkg.startsWith('RO')) ? 'RO' : 'RB';
+    pkg = normalizePkg(pkg);
 
     if (!map[room]){
       map[room] = {name, pkg};
@@ -696,7 +709,7 @@ async function importLogsCSV(file){
       Room: room,
       Guests: parseInt(row[iGuests] || '1',10) || 1,
       GuestName: row[iName] || '-',
-      Package: (String(row[iPkg]||'RB').toUpperCase()==='RO')?'RO':'RB',
+      Package: normalizePkg(row[iPkg]||'RB'),
       NeedPayment: (String(row[iPay]||'NO').toUpperCase()==='YES')?'YES':'NO',
       InhFound: (String(row[iFound]||'NO').toUpperCase()==='YES')?'YES':'NO',
     };
@@ -811,7 +824,7 @@ async function saveFlow(){
   const hasInh = !!inhMap;
   const inhFound = (hasInh && inhMap[room]) ? 'YES' : 'NO';
   const guestName = (hasInh && inhMap[room]) ? (inhMap[room].name || '-') : '-';
-  const pkg = (hasInh && inhMap[room]) ? (inhMap[room].pkg || 'RB') : 'RB';
+  const pkg = (hasInh && inhMap[room]) ? normalizePkg(inhMap[room].pkg || 'RB') : 'RB';
   const needPay = (pkg === 'RO') ? 'YES' : 'NO';
 
   const last = findLogToday(room);
@@ -839,7 +852,7 @@ async function saveFlow(){
     Room: room,
     Guests: guests,
     GuestName: guestName,
-    Package: (pkg === 'RO') ? 'RO' : 'RB',
+    Package: (pkg === 'RO') ? 'RO' : (pkg === 'EXECUTIVE' ? 'EXECUTIVE' : 'RB'),
     NeedPayment: needPay,
     InhFound: inhFound
   });
@@ -851,7 +864,7 @@ async function saveFlow(){
     Room: room,
     Guests: guests,
     GuestName: guestName,
-    Package: (pkg === 'RO') ? 'RO' : 'RB',
+    Package: (pkg === 'RO') ? 'RO' : (pkg === 'EXECUTIVE' ? 'EXECUTIVE' : 'RB'),
     NeedPayment: needPay,
     InhFound: inhFound
   });
