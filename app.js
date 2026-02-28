@@ -1,5 +1,5 @@
 const ROOM_RE = /^(?:[A-Z]\d{3,4}|\d{4,5})$/;
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 
 const els = {
   btnLoadInh: document.getElementById('btnLoadInh'),
@@ -107,7 +107,7 @@ function normalizePkg(raw){
 }
 
 function displayPkg(pkg){
-  const p = (typeof normalizePkg === 'function') ? normalizePkg(pkg) : String(pkg||'RB').toUpperCase();
+  const p = normalizePkg(pkg);
   return (p === 'EXECUTIVE') ? 'Executive' : p;
 }
 
@@ -298,8 +298,6 @@ function cloudDiag(){
   const parts = [];
   parts.push(`firebase global: ${hasFbGlobal ? 'OK' : 'NO'}`);
   parts.push(`wrapper __fb: ${hasWrapper ? 'OK' : 'NO'}`);
-  parts.push(`deleteCollectionPath: ${typeof deleteCollectionPath}`);
-  parts.push(`appVersion: ${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '(unknown)'}`);
   parts.push(`projectId: ${cfg.projectId || '(missing)'}`);
   if (st.stage) parts.push(`stage: ${st.stage}`);
   if (st.error) parts.push(`error: ${st.error}`);

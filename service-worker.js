@@ -1,8 +1,8 @@
-const CACHE = 'breakfast-webapp-pwa-v22';
+const CACHE = 'breakfast-webapp-pwa-v23';
 const ASSETS = [
   './',
   './index.html',
-  './app.js?v=22',
+  './app.js?v=23',
   './manifest.json',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
   './icon-192.png',
