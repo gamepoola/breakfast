@@ -34,8 +34,12 @@ function todayISO(){
 // Track that INH has been uploaded to Cloud for today (avoid repeated uploads)
 const INH_UPLOAD_KEY = 'inh_uploaded_' + todayISO();
 function nowISO(){
+  const d = new Date();
+  const pad = (n)=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 
-// ===== Cloud delete helpers (Firestore compat) =====
+// ===== Reset helpers (Cloud + Local) =====
 async function deleteCollectionPath(path, maxBatch=400){
   if (!cloudReady || !window.__fb || !window.__fb.db) return;
   const db = window.__fb.db;
@@ -54,9 +58,7 @@ async function deleteCollectionPath(path, maxBatch=400){
 
 async function deleteDocPath(path){
   if (!cloudReady || !window.__fb || !window.__fb.db) return;
-  const db = window.__fb.db;
-  const ref = db.doc(path);
-  try{ await ref.delete(); }catch(e){}
+  try{ await window.__fb.db.doc(path).delete(); }catch(e){}
 }
 
 function clearLocalINH(){
@@ -70,11 +72,8 @@ function clearLocalINH(){
   setInhStatus(false);
   updateStatsUI();
 }
-// ===== /Cloud delete helpers =====
+// ===== /Reset helpers =====
 
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 function normRoom(s){
   let t = String(s ?? '').toUpperCase().trim();
   t = t.replace(/\s+/g,'');
