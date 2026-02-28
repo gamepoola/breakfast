@@ -1,5 +1,4 @@
 const ROOM_RE = /^(?:[A-Z]\d{3,4}|\d{4,5})$/;
-const APP_VERSION = 'v23';
 
 const els = {
   btnLoadInh: document.getElementById('btnLoadInh'),
@@ -105,12 +104,6 @@ function normalizePkg(raw){
   if (s === 'RO' || s.startsWith('RO')) return 'RO';
   return 'RB';
 }
-
-function displayPkg(pkg){
-  const p = normalizePkg(pkg);
-  return (p === 'EXECUTIVE') ? 'Executive' : p;
-}
-
 
 
 // Normalize header keys for flexible matching (trim, remove NBSP, remove punctuation, uppercase)
@@ -970,7 +963,7 @@ async function saveFlow(){
   setLogs(logs);
 }
 
-  await showModal({title:'บันทึกแล้ว', body:`ชื่อ: ${guestName}\nห้อง: ${room}\nจำนวน: ${guests} ท่าน\nแพคเกจ: ${displayPkg(pkg)}`, isRO:(pkg==='RO')});
+  await showModal({title:'บันทึกแล้ว', body:`ชื่อ: ${guestName}\nห้อง: ${room}\nจำนวน: ${guests} ท่าน\nแพคเกจ: ${(pkg==='RO')?'RO':'RB'}`, isRO:(pkg==='RO')});
 
   els.room.value = '';
   els.guests.value = '';

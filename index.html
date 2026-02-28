@@ -228,7 +228,7 @@
   <div class="topbar">
     <h1>Breakfast Check-in (Executive / RO / RB)</h1>
     <div class="topright">
-
+      <span class="pill" id="pwaHint">PWA: กำลังตรวจสอบ…</span>
       <span class="pill no" id="cloudPill">Cloud: ยังไม่พร้อม</span>
     </div>
   </div>
@@ -240,6 +240,7 @@
       <div class="fileRow">
         <div class="left">
           <h2>โหลดเอกสาร (XLSX/CSV)</h2>
+          <span class="muted">— เลือกไฟล์ INH เพื่อเช็ค Executive/RO/RB</span>
         </div>
         <div class="topright">
           สถานะ INH: <span id="inhStatus" class="pill no">ยังไม่ได้โหลด</span>
@@ -248,6 +249,7 @@
 
       <div class="fileRow" style="margin-top:6px">
         <div class="left" style="flex:1">
+          <label class="muted">ไฟล์ INH:</label>
           <input id="fileInh" type="file"
             accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
         </div>
@@ -270,9 +272,11 @@
 
       <div class="row">
         <div class="field">
+          <label>เลขห้อง (เช่น A105 / D610) — กด <span class="kbd">Enter</span> เพื่อไปช่องถัดไป</label>
           <input id="room" autocomplete="off" autocapitalize="characters" placeholder="เช่น A105" />
         </div>
         <div class="field">
+          <label>จำนวนคน (PAX) — กด <span class="kbd">Enter</span> เพื่อบันทึกทันที</label>
           <input id="guests" class="small" inputmode="numeric" autocomplete="off" placeholder="1" />
         </div>
       </div>
@@ -419,7 +423,7 @@
 
 <!-- ===== /Firebase ===== -->
 
-<script src="app.js?v=23"></script>
+<script src="app.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
