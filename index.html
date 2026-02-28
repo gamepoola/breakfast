@@ -228,8 +228,6 @@
   <div class="topbar">
     <h1>Breakfast Check-in (Executive / RO / RB)</h1>
     <div class="topright">
-      <span class="pill" id="pwaHint">PWA: กำลังตรวจสอบ…</span>
-      <span class="pill warn" id="verPill">v22</span>
       <span class="pill no" id="cloudPill">Cloud: ยังไม่พร้อม</span>
     </div>
   </div>
@@ -250,7 +248,7 @@
 
       <div class="fileRow" style="margin-top:6px">
         <div class="left" style="flex:1">
-          <label class="muted">ไฟล์ INH:</label>
+
           <input id="fileInh" type="file"
             accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" />
         </div>
@@ -262,7 +260,7 @@
         </div>
       </div>
 
-      <div class="subnote" id="inhMeta"></div>
+
       <div class="stats" style="margin-top:10px">
         <span class="pill" id="statRooms">ห้องทั้งหมด: 0</span>
         <span class="pill" id="statRO">RO: 0</span>
@@ -273,11 +271,9 @@
 
       <div class="row">
         <div class="field">
-          <label>เลขห้อง (เช่น A105 / D610) — กด <span class="kbd">Enter</span> เพื่อไปช่องถัดไป</label>
           <input id="room" autocomplete="off" autocapitalize="characters" placeholder="เช่น A105" />
         </div>
         <div class="field">
-          <label>จำนวนคน (PAX) — กด <span class="kbd">Enter</span> เพื่อบันทึกทันที</label>
           <input id="guests" class="small" inputmode="numeric" autocomplete="off" placeholder="1" />
         </div>
       </div>
