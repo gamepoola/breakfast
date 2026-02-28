@@ -1,4 +1,5 @@
 const ROOM_RE = /^(?:[A-Z]\d{3,4}|\d{4,5})$/;
+const APP_VERSION = 'v22';
 
 const els = {
   btnLoadInh: document.getElementById('btnLoadInh'),
@@ -104,6 +105,12 @@ function normalizePkg(raw){
   if (s === 'RO' || s.startsWith('RO')) return 'RO';
   return 'RB';
 }
+
+function displayPkg(pkg){
+  const p = (typeof normalizePkg === 'function') ? normalizePkg(pkg) : String(pkg||'RB').toUpperCase();
+  return (p === 'EXECUTIVE') ? 'Executive' : p;
+}
+
 
 
 // Normalize header keys for flexible matching (trim, remove NBSP, remove punctuation, uppercase)
@@ -291,6 +298,8 @@ function cloudDiag(){
   const parts = [];
   parts.push(`firebase global: ${hasFbGlobal ? 'OK' : 'NO'}`);
   parts.push(`wrapper __fb: ${hasWrapper ? 'OK' : 'NO'}`);
+  parts.push(`deleteCollectionPath: ${typeof deleteCollectionPath}`);
+  parts.push(`appVersion: ${typeof APP_VERSION !== 'undefined' ? APP_VERSION : '(unknown)'}`);
   parts.push(`projectId: ${cfg.projectId || '(missing)'}`);
   if (st.stage) parts.push(`stage: ${st.stage}`);
   if (st.error) parts.push(`error: ${st.error}`);
@@ -963,7 +972,7 @@ async function saveFlow(){
   setLogs(logs);
 }
 
-  await showModal({title:'บันทึกแล้ว', body:`ชื่อ: ${guestName}\nห้อง: ${room}\nจำนวน: ${guests} ท่าน\nแพคเกจ: ${(pkg==='RO')?'RO':'RB'}`, isRO:(pkg==='RO')});
+  await showModal({title:'บันทึกแล้ว', body:`ชื่อ: ${guestName}\nห้อง: ${room}\nจำนวน: ${guests} ท่าน\nแพคเกจ: ${displayPkg(pkg)}`, isRO:(pkg==='RO')});
 
   els.room.value = '';
   els.guests.value = '';

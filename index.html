@@ -229,6 +229,7 @@
     <h1>Breakfast Check-in (Executive / RO / RB)</h1>
     <div class="topright">
       <span class="pill" id="pwaHint">PWA: กำลังตรวจสอบ…</span>
+      <span class="pill warn" id="verPill">v22</span>
       <span class="pill no" id="cloudPill">Cloud: ยังไม่พร้อม</span>
     </div>
   </div>
@@ -423,7 +424,7 @@
 
 <!-- ===== /Firebase ===== -->
 
-<script src="app.js"></script>
+<script src="app.js?v=22"></script>
 <script>
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
