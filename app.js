@@ -34,6 +34,44 @@ function todayISO(){
 // Track that INH has been uploaded to Cloud for today (avoid repeated uploads)
 const INH_UPLOAD_KEY = 'inh_uploaded_' + todayISO();
 function nowISO(){
+
+// ===== Cloud delete helpers (Firestore compat) =====
+async function deleteCollectionPath(path, maxBatch=400){
+  if (!cloudReady || !window.__fb || !window.__fb.db) return;
+  const db = window.__fb.db;
+
+  while (true){
+    const snap = await db.collection(path).limit(maxBatch).get();
+    if (snap.empty) break;
+
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+
+    if (snap.size < maxBatch) break;
+  }
+}
+
+async function deleteDocPath(path){
+  if (!cloudReady || !window.__fb || !window.__fb.db) return;
+  const db = window.__fb.db;
+  const ref = db.doc(path);
+  try{ await ref.delete(); }catch(e){}
+}
+
+function clearLocalINH(){
+  try{
+    localStorage.removeItem('inhMap');
+    localStorage.removeItem('inhMeta');
+    localStorage.removeItem(INH_UPLOAD_KEY);
+  }catch(e){}
+  inhMap = null;
+  inhMeta = null;
+  setInhStatus(false);
+  updateStatsUI();
+}
+// ===== /Cloud delete helpers =====
+
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
@@ -786,6 +824,61 @@ els.fileLog.addEventListener('change', async (e)=>{
     });
   }
 })();
+
+// Clear INH (Cloud + Local)
+els.btnClearINH = document.getElementById('btnClearINH');
+if (els.btnClearINH){
+  els.btnClearINH.addEventListener('click', async ()=>{
+    const ok = await showModal({
+      title:'ลบ INH',
+      body:'ต้องการลบ INH ของ “วันนี้” หรือไม่?\n- จะลบ INH จาก Cloud (inh_rooms)\n- จะลบ cache ในเครื่องนี้\n\n* Logs จะยังอยู่',
+      ask:true
+    });
+    if (!ok) return;
+
+    if (cloudReady){
+      try{
+        await deleteCollectionPath(dayPath() + '/inh_rooms');
+        await deleteDocPath(dayPath() + '/meta/summary');
+      }catch(e){
+        await showModal({title:'ลบ INH ไม่สำเร็จ', body:String(e?.code || e?.message || e)});
+        return;
+      }
+    }
+    clearLocalINH();
+    await showModal({title:'ลบ INH แล้ว', body:'INH ของวันนี้ถูกลบแล้ว'}); 
+  });
+}
+
+// Reset all today (Cloud + Local): INH + Logs
+els.btnResetAll = document.getElementById('btnResetAll');
+if (els.btnResetAll){
+  els.btnResetAll.addEventListener('click', async ()=>{
+    const ok = await showModal({
+      title:'รีเซ็ตทั้งหมด',
+      body:'ต้องการรีเซ็ตข้อมูล “วันนี้” ให้กลับเป็น 0 หรือไม่?\n\nจะลบ:\n- INH (inh_rooms)\n- Logs (checkins)\n- room_status\n- meta/summary\n\n* ข้อมูลของวันอื่นจะไม่ถูกลบ',
+      ask:true
+    });
+    if (!ok) return;
+
+    if (cloudReady){
+      try{
+        await deleteCollectionPath(dayPath() + '/checkins');
+        await deleteCollectionPath(dayPath() + '/room_status');
+        await deleteCollectionPath(dayPath() + '/inh_rooms');
+        await deleteDocPath(dayPath() + '/meta/summary');
+      }catch(e){
+        await showModal({title:'รีเซ็ตไม่สำเร็จ', body:String(e?.code || e?.message || e)});
+        return;
+      }
+    }
+
+    try{ localStorage.removeItem('logs_' + todayISO()); }catch(e){}
+    clearLocalINH();
+    renderRecent();
+    await showModal({title:'รีเซ็ตแล้ว', body:'ข้อมูลวันนี้ถูกรีเซ็ตเป็น 0 แล้ว'}); 
+  });
+}
 
 els.btnClear.addEventListener('click', async ()=>{
   const ok = await showModal({title:'ล้าง Logs', body:'ต้องการล้าง Logs ของ “วันนี้” หรือไม่?', ask:true});
