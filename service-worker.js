@@ -1,4 +1,4 @@
-const CACHE = 'breakfast-webapp-pwa-v18';
+const CACHE = 'breakfast-webapp-pwa-v19';
 const ASSETS = [
   './',
   './index.html',
